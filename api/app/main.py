@@ -74,12 +74,17 @@ async def upload_excel(file: UploadFile):
         if not file.filename.endswith('.xlsx'):
             raise HTTPException(status_code=400, detail="Apenas arquivos .xlsx são aceitos")
         
-        # Lê o conteúdo do arquivo
-        contents = await file.read()
+        # Lê o conteúdo do arquivo em chunks
+        contents = bytearray()
+        chunk_size = 1024 * 1024  # 1MB chunks
+        
+        while chunk := await file.read(chunk_size):
+            contents.extend(chunk)
+            
         logger.info(f"Tamanho do arquivo: {len(contents)} bytes")
         
         # Converte para Workbook
-        workbook = openpyxl.load_workbook(io.BytesIO(contents))
+        workbook = openpyxl.load_workbook(io.BytesIO(contents), read_only=True)
         logger.info(f"Workbook carregado com {len(workbook.sheetnames)} planilhas")
         
         # Processa os dados

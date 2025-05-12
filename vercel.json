@@ -18,7 +18,13 @@
   ],
   "env": {
     "PYTHON_VERSION": "3.9",
-    "MAX_UPLOAD_SIZE": "10",
+    "MAX_UPLOAD_SIZE": "50",
     "PYTHONPATH": "."
+  },
+  "functions": {
+    "api/index.py": {
+      "memory": 1024,
+      "maxDuration": 60
+    }
   }
 } 
