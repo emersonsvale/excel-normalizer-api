@@ -2,18 +2,21 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/index.py",
-      "use": "@vercel/python"
+      "src": "main.py",
+      "use": "@vercel/python",
+      "config": {
+        "runtime": "python3.9"
+      }
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "api/index.py"
+      "dest": "main.py"
     }
   ],
   "env": {
-    "PYTHON_VERSION": "3.11",
+    "PYTHON_VERSION": "3.9",
     "MAX_UPLOAD_SIZE": "10"
   }
 } 
