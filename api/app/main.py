@@ -1,6 +1,6 @@
 from fastapi import FastAPI, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
-import pandas as pd
+import openpyxl
 import re
 from typing import List, Dict, Any
 import io
@@ -21,31 +21,35 @@ def normalize_column_name(column: str) -> str:
     """Normaliza o nome da coluna removendo espaços e convertendo para minúsculas."""
     return re.sub(r'\s+', '', column.lower())
 
-def process_excel_data(df: pd.DataFrame) -> List[Dict[str, Any]]:
-    """Processa os dados do DataFrame e retorna uma lista de dicionários."""
+def process_excel_data(workbook: openpyxl.Workbook) -> List[Dict[str, Any]]:
+    """Processa os dados da planilha e retorna uma lista de dicionários."""
     try:
-        # Log das colunas originais
-        logger.info(f"Colunas originais: {df.columns.tolist()}")
+        # Pega a primeira planilha
+        sheet = workbook.active
         
-        # Normaliza os nomes das colunas
-        df.columns = [normalize_column_name(col) for col in df.columns]
-        logger.info(f"Colunas normalizadas: {df.columns.tolist()}")
+        # Pega os cabeçalhos
+        headers = [normalize_column_name(cell.value) for cell in sheet[1]]
+        logger.info(f"Colunas normalizadas: {headers}")
         
         # Verifica se a coluna 'location' existe
-        if 'location' not in df.columns:
+        if 'location' not in headers:
             raise HTTPException(
                 status_code=400,
-                detail=f"Coluna 'Location' não encontrada no arquivo Excel. Colunas disponíveis: {df.columns.tolist()}"
+                detail=f"Coluna 'Location' não encontrada no arquivo Excel. Colunas disponíveis: {headers}"
             )
         
-        # Filtra registros sem location
-        df = df.dropna(subset=['location'])
-        logger.info(f"Número de registros após filtrar location nulos: {len(df)}")
+        # Processa as linhas
+        result = []
+        for row in sheet.iter_rows(min_row=2, values_only=True):
+            if not row[headers.index('location')]:  # Pula linhas sem location
+                continue
+                
+            row_dict = {}
+            for header, value in zip(headers, row):
+                row_dict[header] = value
+            result.append(row_dict)
         
-        # Converte o DataFrame para lista de dicionários
-        result = df.to_dict(orient='records')
-        logger.info(f"Número de registros convertidos: {len(result)}")
-        
+        logger.info(f"Número de registros processados: {len(result)}")
         return result
     
     except Exception as e:
@@ -74,12 +78,12 @@ async def upload_excel(file: UploadFile):
         contents = await file.read()
         logger.info(f"Tamanho do arquivo: {len(contents)} bytes")
         
-        # Converte para DataFrame
-        df = pd.read_excel(io.BytesIO(contents))
-        logger.info(f"DataFrame criado com {len(df)} linhas e {len(df.columns)} colunas")
+        # Converte para Workbook
+        workbook = openpyxl.load_workbook(io.BytesIO(contents))
+        logger.info(f"Workbook carregado com {len(workbook.sheetnames)} planilhas")
         
         # Processa os dados
-        result = process_excel_data(df)
+        result = process_excel_data(workbook)
         
         return JSONResponse(content=result)
     
