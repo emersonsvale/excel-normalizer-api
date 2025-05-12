@@ -2,6 +2,14 @@
 
 API em FastAPI para converter arquivos Excel (.xlsx) em formato JSON.
 
+## Features
+
+* Upload de arquivos Excel via endpoint POST
+* Normalização dos nomes das colunas (minúsculas, remoção de espaços)
+* Retorno dos dados em formato JSON
+* Suporte a Docker
+* Deploy na Vercel
+
 ## Requisitos
 
 - Python 3.8+
@@ -9,7 +17,12 @@ API em FastAPI para converter arquivos Excel (.xlsx) em formato JSON.
 
 ## Instalação
 
-1. Clone o repositório
+1. Clone o repositório:
+```bash
+git clone https://github.com/emersonsvale/excel-normalizer-api.git
+cd excel-normalizer-api
+```
+
 2. Crie um ambiente virtual (recomendado):
 ```bash
 python -m venv venv
@@ -56,8 +69,25 @@ curl -X POST "http://localhost:8000/upload" \
 ### GET /
 Endpoint raiz com informações sobre a API.
 
+## Docker Support
+
+Para construir e executar o container Docker:
+
+```bash
+docker build -t excel-normalizer .
+docker run -p 8000:8000 excel-normalizer
+```
+
+## Deploy
+
+Esta aplicação pode ser deployada na Vercel usando a configuração `vercel.json` fornecida.
+
 ## Documentação da API
 
 A documentação interativa da API está disponível em:
 - Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc` 
+- ReDoc: `http://localhost:8000/redoc`
+
+## Licença
+
+MIT
