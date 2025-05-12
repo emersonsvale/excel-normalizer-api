@@ -35,4 +35,12 @@ async def upload_file(file: UploadFile = File(...)):
         return {"filename": file.filename, "data": excel_data}
     
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}") 
+        # Log the detailed error
+        error_msg = str(e)
+        print(f"Error processing file: {error_msg}")
+        raise HTTPException(status_code=500, detail=f"Error processing file: {error_msg}")
+
+# Special handler for Vercel serverless
+@app.get("/api/health")
+async def health():
+    return {"status": "ok"} 
