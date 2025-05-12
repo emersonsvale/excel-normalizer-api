@@ -2,20 +2,18 @@
   "version": 2,
   "builds": [
     {
-      "src": "app/vercel_app.py",
+      "src": "app/main.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "app/vercel_app.py"
+      "dest": "app/main.py"
     }
   ],
-  "functions": {
-    "app/vercel_app.py": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
+  "env": {
+    "PYTHON_VERSION": "3.11",
+    "MAX_UPLOAD_SIZE": "10"
   }
 } 
