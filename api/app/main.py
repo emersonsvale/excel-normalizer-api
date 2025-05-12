@@ -6,6 +6,7 @@ from typing import List, Dict, Any
 import io
 import logging
 import traceback
+import gc
 
 # Configuração do logging
 logging.basicConfig(level=logging.INFO)
@@ -38,8 +39,11 @@ def process_excel_data(workbook: openpyxl.Workbook) -> List[Dict[str, Any]]:
                 detail=f"Coluna 'Location' não encontrada no arquivo Excel. Colunas disponíveis: {headers}"
             )
         
-        # Processa as linhas
+        # Processa as linhas em lotes
         result = []
+        batch_size = 1000  # Processa 1000 linhas por vez
+        current_batch = []
+        
         for row in sheet.iter_rows(min_row=2, values_only=True):
             if not row[headers.index('location')]:  # Pula linhas sem location
                 continue
@@ -47,7 +51,17 @@ def process_excel_data(workbook: openpyxl.Workbook) -> List[Dict[str, Any]]:
             row_dict = {}
             for header, value in zip(headers, row):
                 row_dict[header] = value
-            result.append(row_dict)
+            current_batch.append(row_dict)
+            
+            # Quando o lote estiver cheio, adiciona ao resultado e limpa a memória
+            if len(current_batch) >= batch_size:
+                result.extend(current_batch)
+                current_batch = []
+                gc.collect()  # Força coleta de lixo
+        
+        # Adiciona o último lote se houver
+        if current_batch:
+            result.extend(current_batch)
         
         logger.info(f"Número de registros processados: {len(result)}")
         return result
@@ -80,15 +94,25 @@ async def upload_excel(file: UploadFile):
         
         while chunk := await file.read(chunk_size):
             contents.extend(chunk)
+            gc.collect()  # Força coleta de lixo após cada chunk
             
         logger.info(f"Tamanho do arquivo: {len(contents)} bytes")
         
-        # Converte para Workbook
-        workbook = openpyxl.load_workbook(io.BytesIO(contents), read_only=True)
+        # Converte para Workbook com otimizações
+        workbook = openpyxl.load_workbook(
+            io.BytesIO(contents),
+            read_only=True,
+            data_only=True,  # Carrega apenas valores, não fórmulas
+            keep_vba=False   # Não carrega macros
+        )
         logger.info(f"Workbook carregado com {len(workbook.sheetnames)} planilhas")
         
         # Processa os dados
         result = process_excel_data(workbook)
+        
+        # Limpa memória
+        del workbook
+        gc.collect()
         
         return JSONResponse(content=result)
     
