@@ -9,4 +9,6 @@ async def root():
     return RedirectResponse(url="/docs")
 
 # Importando todas as rotas do app principal
-app.mount("/", main_app) 
+app.mount("/", main_app)
+
+# This is the entry point for Vercel 
