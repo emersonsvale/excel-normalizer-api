@@ -2,29 +2,17 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/index.py",
-      "use": "@vercel/python",
-      "config": {
-        "runtime": "python3.9",
-        "buildCommand": "pip install -r requirements.txt"
-      }
+      "src": "api/app/main.py",
+      "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "api/index.py"
+      "dest": "api/app/main.py"
     }
   ],
   "env": {
-    "PYTHON_VERSION": "3.9",
-    "MAX_UPLOAD_SIZE": "50",
-    "PYTHONPATH": "."
-  },
-  "functions": {
-    "api/index.py": {
-      "memory": 1024,
-      "maxDuration": 60
-    }
+    "MAX_UPLOAD_SIZE": "50"
   }
 } 
