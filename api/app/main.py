@@ -7,10 +7,16 @@ import io
 import logging
 import traceback
 import gc
+import os
 
 # Configuração do logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Constantes
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB em bytes
+BATCH_SIZE = 10000  # Aumentado para 10k linhas por lote
+CHUNK_SIZE = 2 * 1024 * 1024  # 2MB chunks para leitura
 
 app = FastAPI(
     title="Excel to JSON Converter",
@@ -41,10 +47,22 @@ def process_excel_data(workbook: openpyxl.Workbook) -> List[Dict[str, Any]]:
         
         # Processa as linhas em lotes
         result = []
-        batch_size = 1000  # Processa 1000 linhas por vez
         current_batch = []
+        total_rows = 0
+        processed_rows = 0
+        
+        # Conta o número total de linhas
+        for _ in sheet.iter_rows(min_row=2):
+            total_rows += 1
+        
+        logger.info(f"Total de linhas a processar: {total_rows}")
         
         for row in sheet.iter_rows(min_row=2, values_only=True):
+            processed_rows += 1
+            
+            if processed_rows % 100000 == 0:
+                logger.info(f"Processando linha {processed_rows} de {total_rows}")
+            
             if not row[headers.index('location')]:  # Pula linhas sem location
                 continue
                 
@@ -54,7 +72,7 @@ def process_excel_data(workbook: openpyxl.Workbook) -> List[Dict[str, Any]]:
             current_batch.append(row_dict)
             
             # Quando o lote estiver cheio, adiciona ao resultado e limpa a memória
-            if len(current_batch) >= batch_size:
+            if len(current_batch) >= BATCH_SIZE:
                 result.extend(current_batch)
                 current_batch = []
                 gc.collect()  # Força coleta de lixo
@@ -90,13 +108,19 @@ async def upload_excel(file: UploadFile):
         
         # Lê o conteúdo do arquivo em chunks
         contents = bytearray()
-        chunk_size = 1024 * 1024  # 1MB chunks
+        total_size = 0
         
-        while chunk := await file.read(chunk_size):
+        while chunk := await file.read(CHUNK_SIZE):
+            total_size += len(chunk)
+            if total_size > MAX_FILE_SIZE:
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"Arquivo muito grande. Tamanho máximo permitido: {MAX_FILE_SIZE/1024/1024}MB"
+                )
             contents.extend(chunk)
             gc.collect()  # Força coleta de lixo após cada chunk
             
-        logger.info(f"Tamanho do arquivo: {len(contents)} bytes")
+        logger.info(f"Tamanho do arquivo: {total_size/1024/1024:.2f}MB")
         
         # Converte para Workbook com otimizações
         workbook = openpyxl.load_workbook(
@@ -112,6 +136,7 @@ async def upload_excel(file: UploadFile):
         
         # Limpa memória
         del workbook
+        del contents
         gc.collect()
         
         return JSONResponse(content=result)
